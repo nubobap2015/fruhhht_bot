@@ -57,10 +57,11 @@ def write_to_log(id_action, id_user, id_chat, text, alko_diff, to_user, toxic_di
 def get_user_state(id_user, id_chat=0):
     my_conn = sqlite3.connect(secrets.db_name)
     cursor = my_conn.cursor()
-    my_chat = f'and id_chat = {id_chat}'
-    my_query = f'select id_user, sum(alko_diff) as alko_lvl, sum(toxic_diff) as toxic_lvl ' \
-               f'from actions_log where id_user = {id_user} ' \
-               f'{my_chat if id_chat != 0 else ""}'
+    my_chat = f"and id_chat = {id_chat}"
+    my_query = f"select id_user, sum(alko_diff) as alko_lvl, sum(toxic_diff) as toxic_lvl " \
+               f"from actions_log where id_user = {id_user} " \
+               f"and created_at > date('now','-{USER_ALKO_TIME_IN_HOURS} hours')" \
+               f"{my_chat if id_chat != 0 else ''}"
     print(my_query)
     cursor.execute(my_query);
     ret = cursor.fetchall()
