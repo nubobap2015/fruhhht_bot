@@ -1,6 +1,6 @@
 import telebot, secrets, sqlite3, datetime, semantic
 
-#Constants
+# Constants
 USER_ALKO_TIME_IN_HOURS = 8
 
 
@@ -18,7 +18,7 @@ def get_db_user(message):
                        f'({message.from_user.id}, "{message.from_user.username}");')
         my_conn.commit()
         results = get_db_user(message)
-    if results[0][2] != message.from_user.username and len(results[0][2]) >0:
+    if results[0][2] != message.from_user.username and len(results[0][2]) > 0:
         print('Ты чё? Ник сменил??')
     my_conn.close()
     return results
@@ -63,7 +63,7 @@ def get_user_state(id_user, id_chat=0):
                f"and created_at > date('now','-{USER_ALKO_TIME_IN_HOURS} hours')" \
                f"{my_chat if id_chat != 0 else ''}"
     print(my_query)
-    cursor.execute(my_query);
+    cursor.execute(my_query)
     ret = cursor.fetchall()
     my_conn.commit()
     my_conn.close()
