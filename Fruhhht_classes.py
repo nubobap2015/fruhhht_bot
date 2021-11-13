@@ -4,7 +4,8 @@ DEBUG_MODE = True
 BOT_INTERVAL = 10  # in seconds
 DB_NAME = secrets.db_name
 
-class Fruhhht_bot():
+
+class FruhhhtBot():
     """Класс для группы"""
 
     def __init__(self, bot, chat_id):
@@ -16,6 +17,12 @@ class Fruhhht_bot():
             print(self.bot, self.chat_id, self.bot_timer)
 
     def start(self):
+        pass
+
+    def stop(self):
+        pass
+
+    def get_message(self, message):
         pass
 
     def bot_activity(self):
