@@ -85,7 +85,7 @@ print(get_user_state(10,4))
 print(get_user_state(144,0))
 
 print(f'{secrets.bot_name} запущен...')
-# bot.polling(none_stop=True, interval=0)
+bot.polling(none_stop=True, interval=0)
 print(f'{secrets.bot_name} завершен...')
 '''
 print(get_db_user(1111111, 'mamamama2'))

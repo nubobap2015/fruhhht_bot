@@ -1,4 +1,4 @@
-import threading, secrets, sqlite3
+import threading, secrets, sqlite3, telebot
 
 DEBUG_MODE = True
 BOT_INTERVAL = 10  # in seconds
@@ -46,5 +46,7 @@ class SQL():
         ins_id = self.cur.lastrowid
         self.conn.commit()
         return ins_id
+
+
 
 
