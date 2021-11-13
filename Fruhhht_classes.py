@@ -11,22 +11,25 @@ class FruhhhtBot():
     def __init__(self, bot, chat_id):
         self.bot = bot
         self.chat_id = chat_id
-
-        self.bot_timer = threading.Timer(BOT_INTERVAL, self.bot_activity())
+        self.bot_timer = threading.Timer(BOT_INTERVAL, self.bot_activity)
         if DEBUG_MODE:
             print(self.bot, self.chat_id, self.bot_timer)
 
     def start(self):
-        pass
+        self.bot_timer.start()
 
     def stop(self):
-        pass
+        if self.bot_timer.is_alive():
+            self.bot_timer.cancel()
 
     def get_message(self, message):
         pass
 
     def bot_activity(self):
-        pass
+        self.bot.send_message(self.chat_id, f"Активность")
+        self.bot_timer = threading.Timer(BOT_INTERVAL, self.bot_activity)
+        self.bot_timer.start()
+
 
     def select_from_db(self, sql_text):
         with SQL() as sql:

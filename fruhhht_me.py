@@ -5,10 +5,15 @@ from Fruhhht_classes import FruhhhtBot
 bot = telebot.TeleBot(secrets.bot_token)
 bot_list = {}
 
+@bot.message_handler(commands=['status_server'])
+def welcome(message):
+    print(f'STATUS_SERVER: {message.from_user.username}: {message.text}')
+    print(bot_list)
 
 @bot.message_handler(commands=['start'])
 def welcome(message):
     print(f'START: {message.from_user.username}: {message.text}')
+    print(message)
     id_chat = message.chat.id
     id_chat_str = str(id_chat)
     my_bot = bot_list.get(id_chat_str)
