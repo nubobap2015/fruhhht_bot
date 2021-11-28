@@ -15,13 +15,14 @@ def welcome(message):
 @bot.message_handler(commands=['start'])
 def welcome(message):
     print(f'START: {message.from_user.username}: {message.text}')
-    if message.get('chat').get('type') == 'group':
+    print(type(message.chat.type))
+    if message.chat.type == 'group':
         # print(message)
         id_chat = message.chat.id
         id_chat_str = str(id_chat)
         my_bot = bot_list.get(id_chat_str)
         if my_bot:
-            pass
+            my_bot.start()
         else:
             bot_list[id_chat_str] = FruhhhtBot(bot, id_chat)
             bot_list[id_chat_str].start()

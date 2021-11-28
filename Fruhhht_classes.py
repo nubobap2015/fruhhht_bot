@@ -16,12 +16,23 @@ class FruhhhtBot():
         if DEBUG_MODE:
             print(self.bot, self.chat_id, self.bot_timer)
 
+    @property
+    def is_run(self):
+        return self.bot_timer.is_alive()
+
     def start(self):
-        self.bot_timer.start()
+        if self.is_run:
+            self.send_message('Уже запущен')
+        else:
+            self.send_message('Запуск бота')
+            self.bot_timer.start()
 
     def stop(self):
-        if self.bot_timer.is_alive():
+        if self.is_run:
+            self.send_message('Остановка бота')
             self.bot_timer.cancel()
+        else:
+            self.send_message('Уже остановлен')
 
     def get_message(self, message):
         pass
@@ -29,32 +40,46 @@ class FruhhhtBot():
     def send_message(self, text_message):
         self.bot.send_message(self.chat_id, text_message)
 
-    def set_chat2DB(self):
-        res = self._select_from_db(f'select * from chats where id_chat = {self.chat_id}')
-        #if len(res)>0:
+    def check_chat_in_db(self):
+        res = self._select_from_db(f"select * from chats where id_chat = {self.chat_id};")
+        if len(res) > 0:
+            print(res)
+        else:
+            print('Чат не найден в БД')
+            self._update_chat_in_db()
 
-
+    def _update_chat_in_db(self):
+        res = self._select_from_db(f"select * from chats where id_chat = {self.chat_id};")
+        if len(res) > 0:
+            return self._update_db(f"update chats set name='{self.chat.title}' where id_chat = {self.chat_id};")
+        else:
+            return self._insert_into_db(f"insert into chats (id_chat, name) values ({self.chat_id},'{self.chat.title}');")
 
     def _bot_activity(self):
+        """ Активность чат бота"""
+        self.check_chat_in_db()
         self.bot.send_message(self.chat_id, f"Активность")
-        self.bot_timer = threading.Timer(BOT_INTERVAL, self.bot_activity)
+        self.bot_timer = threading.Timer(BOT_INTERVAL, self._bot_activity)
         self.bot_timer.start()
 
-    def _select_from_db(self, sql_text):
+    @staticmethod
+    def _select_from_db(sql_text):
         with SQL() as sql:
             return sql.fetchall(sql_text)
 
-    def _insert_into_db(self, sql_text):
+    @staticmethod
+    def _insert_into_db(sql_text):
         with SQL() as sql:
             return sql.insert(sql_text)
 
-    def _update_db(self, sql_text):
+    @staticmethod
+    def _update_db(sql_text):
         with SQL() as sql:
             return sql.update(sql_text)
 
 
-class SQL():
-
+class SQL:
+    """ Сиквел обертка для обращений к БД SQLite"""
     def __enter__(self):
         self.conn = sqlite3.connect(DB_NAME)
         self.cur = self.conn.cursor()
