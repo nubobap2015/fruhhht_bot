@@ -13,8 +13,10 @@ class FruhhhtBot():
         self.chat_id = chat_id
         self.chat = self.bot.get_chat(self.chat_id)
         self.bot_timer = threading.Timer(BOT_INTERVAL, self._bot_activity)
+        self.alko_lvl = self.get_alko_lvl()
         if DEBUG_MODE:
-            print(self.bot, self.chat_id, self.bot_timer)
+            self.send_message(f'Уровень алкоголя - {self.alko_lvl}')
+            print(self.bot, self.chat_id, self.bot_timer, self.alko_lvl)
 
     @property
     def is_run(self):
@@ -35,6 +37,7 @@ class FruhhhtBot():
             self.send_message('Уже остановлен')
 
     def get_message(self, message):
+        self.send_message(self.get_alko_lvl(0))
         pass
 
     def send_message(self, text_message):
@@ -48,6 +51,17 @@ class FruhhhtBot():
             print('Чат не найден в БД')
             self._update_chat_in_db()
 
+    def get_alko_lvl(self, hours=12):
+        """
+            Возвращает уровель опьянения бота.
+            hours=12 - за какой период возвращать данные, 0->за весь
+        """
+        SQLtext = f"select sum(alko_diff) from actions_log " \
+                  f"where id_chat = {self.chat_id} " \
+                  f"and ({hours}=0 or created_at>date('now','-{hours} hours'));"
+        alko_lvl = self._select_from_db(SQLtext)[0][0]
+        return 0 if alko_lvl == None else alko_lvl
+
     def _update_chat_in_db(self):
         res = self._select_from_db(f"select * from chats where id_chat = {self.chat_id};")
         if len(res) > 0:
@@ -58,6 +72,7 @@ class FruhhhtBot():
     def _bot_activity(self):
         """ Активность чат бота"""
         self.check_chat_in_db()
+        self.alko_lvl = self.get_alko_lvl()
         self.bot.send_message(self.chat_id, f"Активность")
         self.bot_timer = threading.Timer(BOT_INTERVAL, self._bot_activity)
         self.bot_timer.start()
