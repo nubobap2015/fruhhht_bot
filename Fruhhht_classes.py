@@ -1,4 +1,6 @@
 import threading, secrets, sqlite3, telebot
+from random import choice as random_chose
+
 
 DEBUG_MODE = True
 BOT_INTERVAL = 10  # in seconds
@@ -14,6 +16,7 @@ class FruhhhtBot():
         self.chat = self.bot.get_chat(self.chat_id)
         self.bot_timer = threading.Timer(BOT_INTERVAL, self._bot_activity)
         self.alko_lvl = self.get_alko_lvl()
+        # self.fav_drink = select
         if DEBUG_MODE:
             self.send_message(f'Уровень алкоголя - {self.alko_lvl}')
             print(self.bot, self.chat_id, self.bot_timer, self.alko_lvl)
@@ -51,6 +54,18 @@ class FruhhhtBot():
             print('Чат не найден в БД')
             self._update_chat_in_db()
 
+    def drink_some_potion(self):
+        pass
+
+    def set_fav_drink(self, id_drink=None):
+        if id_drink:
+            pass
+        # НЕДОПИСАЛ!!!! ЗАБУХАЛ ))))
+        else:
+            res = random_chose(self._select_from_db("select id_drink, name from drinks;"))
+            self.fav_drink_id = res[0]
+            self.fav_drink_name = res[1]
+
     def get_alko_lvl(self, hours=12):
         """
             Возвращает уровель опьянения бота.
@@ -75,6 +90,7 @@ class FruhhhtBot():
         self.alko_lvl = self.get_alko_lvl()
         self.bot.send_message(self.chat_id, f"Активность")
         self.bot_timer = threading.Timer(BOT_INTERVAL, self._bot_activity)
+        self.set_fav_drink()
         self.bot_timer.start()
 
     @staticmethod
