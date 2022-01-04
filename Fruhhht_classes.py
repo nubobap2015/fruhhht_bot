@@ -16,10 +16,15 @@ class FruhhhtBot():
         self.chat = self.bot.get_chat(self.chat_id)
         self.bot_timer = threading.Timer(BOT_INTERVAL, self._bot_activity)
         self.alko_lvl = self.get_alko_lvl()
-        # self.fav_drink = select
+        self.fav_drink_id = None
+        self.fav_drink_name = None
+        self.fav_measure_unit_id = None
+        self.fav_measure_unit_name = None
+        self.fav_measure_unit_vol2 = None
+        self.set_fav_drink()
         if DEBUG_MODE:
             self.send_message(f'Уровень алкоголя - {self.alko_lvl}')
-            print(self.bot, self.chat_id, self.bot_timer, self.alko_lvl)
+            print(self.bot, self.chat_id, self.bot_timer, self.alko_lvl, self)
 
     @property
     def is_run(self):
@@ -40,7 +45,16 @@ class FruhhhtBot():
             self.send_message('Уже остановлен')
 
     def get_message(self, message):
-        self.send_message(self.get_alko_lvl(0))
+        msg = message.text
+        if '@fruhhhtbot' in msg:
+            percent_start = msg.find('%%')
+            if percent_start >= 0:
+                if len(msg[percent_start:]) == 2:
+                    self.send_message(f"Аттрибуты: {self.__dict__}")
+                else:
+                    self.send_message(f"Аттрибут {msg[percent_start+2:]}: {getattr(self,msg[percent_start+2:],'не существует')}")
+            else:
+                self.send_message(f"Уровень алкоголя в крови: {self.get_alko_lvl(0)}")
         pass
 
     def send_message(self, text_message):
@@ -58,13 +72,21 @@ class FruhhhtBot():
         pass
 
     def set_fav_drink(self, id_drink=None):
+        print('set_fav_drink')
         if id_drink:
-            pass
-        # НЕДОПИСАЛ!!!! ЗАБУХАЛ ))))
+            res = self._select_from_db(f"select id_drink, name from drinks where id_drink={id_drink};")
         else:
-            res = random_chose(self._select_from_db("select id_drink, name from drinks;"))
-            self.fav_drink_id = res[0]
-            self.fav_drink_name = res[1]
+            res = random_chose(self._select_from_db(f"select id_drink, name from drinks;"))
+        self.fav_drink_id = res[0]
+        self.fav_drink_name = res[1]
+        res = random_chose(self._select_from_db(f"select distinct c.*, c.vol2 / b.vol2 from drinks a "
+                                                f"join measure_units b on a.id_measure_unit=b.id_measure_units "
+                                                f"join measure_units c on b.vol2 >= c.vol2 "
+                                                f"where a.id_drink = {self.fav_drink_id} "
+                                                f"order by c.vol2 / b.vol2 desc;"))
+        self.fav_measure_unit_id = res[0]
+        self.fav_measure_unit_name = res[1]
+        self.fav_measure_unit_vol2 = res[3]
 
     def get_alko_lvl(self, hours=12):
         """
@@ -90,8 +112,10 @@ class FruhhhtBot():
         self.alko_lvl = self.get_alko_lvl()
         self.bot.send_message(self.chat_id, f"Активность")
         self.bot_timer = threading.Timer(BOT_INTERVAL, self._bot_activity)
-        self.set_fav_drink()
         self.bot_timer.start()
+
+    def _get_attr_value(self,attr_name):
+        self.__getattribute__(attr_name)
 
     @staticmethod
     def _select_from_db(sql_text):
