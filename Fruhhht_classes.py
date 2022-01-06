@@ -1,4 +1,4 @@
-import threading, secrets, sqlite3, telebot, json
+import threading, secrets, sqlite3, telebot, json, semantic
 from random import choice as random_chose
 
 
@@ -19,8 +19,11 @@ class FruhhhtBot():
         self.alko_lvl = self.get_alko_lvl()
         self.fav_drink_id = None
         self.fav_drink_name = None
+        self.fav_drink_strong = None
+        self.fav_drink_toxic = None
         self.fav_measure_unit_id = None
         self.fav_measure_unit_name = None
+        self.fav_measure_unit_vol = None
         self.fav_measure_unit_vol2 = None
         self.set_fav_drink()
         if DEBUG_MODE:
@@ -65,6 +68,9 @@ class FruhhhtBot():
     def send_message(self, text_message):
         self.bot.send_message(self.chat_id, text_message)
 
+    def send_message2(self, text_message):
+        self.bot.send_message(self.chat_id, text_message, parse_mode='Markdown')
+
     def check_chat_in_db(self):
         res = self._select_from_db(f"select * from chats where id_chat = {self.chat_id};")
         if len(res) > 0:
@@ -84,35 +90,42 @@ class FruhhhtBot():
         """
         if  bool(id_drink):
             fav_drink_id = id_drink
-            res = self._select_from_db(f"select name from drinks where id_drink = {fav_drink_id}")
+            res = self._select_from_db(f"select name, strong, toxic from drinks where id_drink = {fav_drink_id}")
             fav_drink_name = res[0][0]
+            fav_drink_strong = res[0][1]
+            fav_drink_toxic = res[0][2]
         else:
             fav_drink_id = self.fav_drink_id
             fav_drink_name = self.fav_drink_name
+            fav_drink_strong = self.fav_drink_strong
+            fav_drink_toxic = self.fav_drink_toxic
 
         if bool(id_measure_unit):
             fav_measure_unit_id = id_measure_unit
-            res = self._select_from_db(f"select name, vol2 from measure_units where id_measure_units = {fav_measure_unit_id}")
-            print(res)
+            res = self._select_from_db(f"select name, vol, vol2 from measure_units "
+                                       f"where id_measure_units = {fav_measure_unit_id}")
             fav_measure_unit_name = res[0][0]
-            fav_measure_unit_vol2 = res[0][1]
+            fav_measure_unit_vol = res[0][1]
+            fav_measure_unit_vol2 = res[0][2]
         else:
             fav_measure_unit_id = self.fav_measure_unit_id
             fav_measure_unit_name = self.fav_measure_unit_name
+            fav_measure_unit_vol = self.fav_measure_unit_vol
             fav_measure_unit_vol2 = self.fav_measure_unit_vol2
-        # ДОПИСЫВАТЬ ТУТ!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    # ДОПИСЫВАТЬ ТУТ!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-    # ДОПИСЫВАТЬ ТУТ!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-    # ДОПИСЫВАТЬ ТУТ!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-    # записать что выпил
-        # self._insert_into_db(f"insert into actions_log (id_user, id_chat, id_action, text , alko_diff, id_parent_action"
-        #                     f", to_user, to_user) "
-        #                     f"VALUES (1, {self.chat_id}, 1, '', {}, NULL, 1, 0)")
+        alko_diff = fav_drink_strong * fav_measure_unit_vol
+        toxic_diff = fav_drink_toxic * fav_measure_unit_vol
+        my_text = json.dumps([[fav_drink_id, fav_drink_name, fav_drink_strong, fav_drink_toxic],
+                            [fav_measure_unit_id, fav_measure_unit_name, fav_measure_unit_vol, fav_measure_unit_vol2]])
+        print(my_text)
+        # записать в БД что выпил
+        self._insert_into_db(f"insert into actions_log (id_user, id_chat, id_action, text , alko_diff, id_parent_action"
+                             f", to_user, toxic_diff) "
+                             f"VALUES (1, {self.chat_id}, 1, '{my_text}', {alko_diff}, NULL, 1, {toxic_diff})")
         # прокомментировать в чатик
+        how = semantic.get_in_case(fav_measure_unit_name,{'accs','sing'})
+        what = semantic.get_in_case(fav_drink_name,{'gent', 'sing'})
+        self.send_message2(f"{self.get_drink_text(fav_drink_id)} _выпил {how} {what}_")
 
     def get_drink_text(self, id_drink):
         """
@@ -122,7 +135,7 @@ class FruhhhtBot():
         """
         # Сделать таблицу ответов в БД
         # Сделать выбора ответов
-        return "Ухх"
+        return "Ухх!!!"
 
     def set_fav_drink(self, id_drink=None):
         """
@@ -134,9 +147,11 @@ class FruhhhtBot():
         if id_drink:
             res = list(self._select_from_db(f"select id_drink, name from drinks where id_drink={id_drink};"))
         else:
-            res = list(random_chose(self._select_from_db(f"select id_drink, name from drinks;")))
+            res = list(random_chose(self._select_from_db(f"select id_drink, name, strong, toxic from drinks;")))
         self.fav_drink_id = res[0]
         self.fav_drink_name = res[1]
+        self.fav_drink_strong = res[2]
+        self.fav_drink_toxic = res[3]
         # Возвращает случайным образом тару для напитка, причем из набора: дефолтная + все что меньше по объёму
         # Почему так? - хз просто так сделал )))
         res.append(list(random_chose(self._select_from_db(f"select distinct c.*, c.vol2 / b.vol2 from drinks a "
@@ -144,11 +159,13 @@ class FruhhhtBot():
                                                 f"join measure_units c on b.vol2 >= c.vol2 "
                                                 f"where a.id_drink = {self.fav_drink_id} "
                                                 f"order by c.vol2 / b.vol2 desc;"))))
-        self.fav_measure_unit_id = res[2][0]
-        self.fav_measure_unit_name = res[2][1]
-        self.fav_measure_unit_vol2 = res[2][3]
+        print(res)
+        self.fav_measure_unit_id = res[4][0]
+        self.fav_measure_unit_name = res[4][1]
+        self.fav_measure_unit_vol = res[4][2]
+        self.fav_measure_unit_vol2 = res[4][3]
         self._insert_into_db(f"insert into actions_log (id_user, id_chat, id_action, text , alko_diff, id_parent_action"
-                             f", to_user, to_user) "
+                             f", to_user, toxic_diff) "
                              f"VALUES (1, {self.chat_id}, 2, '{str(json.dumps(res))}', 0, NULL, 1, 0)")
 
     def get_alko_lvl(self, hours=BOT_DEFAULT_ALCO_HOURS):
