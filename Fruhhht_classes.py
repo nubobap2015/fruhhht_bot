@@ -57,12 +57,17 @@ class FruhhhtBot():
                 else:
                     self.send_message(f"Аттрибут {msg[percent_start + 2:]}: "
                                       f"{getattr(self, msg[percent_start + 2:], 'не существует')}")
+            elif 'пей' in msg:
+                # Переписать на функцию анализа текста
+                self.drink()
             else:
-                self.send_message(f"Уровень алкоголя в крови: {self.get_alko_lvl()}")
+                self.send_message(f"Заглушка на треп... сделать обработку ответов")
+
+                """self.send_message(f"Уровень алкоголя в крови: {self.get_alko_lvl()}")
                 self.drink()
                 self.drink(2, 3)
-                self.send_message(f"Уровень алкоголя в крови: {self.get_alko_lvl()}")
-        pass
+                self.send_message(f"Уровень алкоголя в крови: {self.get_alko_lvl()}")"""
+
 
     def send_message(self, text_message):
         self.bot.send_message(self.chat_id, text_message)
@@ -70,7 +75,7 @@ class FruhhhtBot():
     def send_message2(self, text_message):
         self.bot.send_message(self.chat_id, text_message, parse_mode='Markdown')
 
-    def get_dicts(self, id_type, alko_lvl = None, id_drink=None,):
+    def get_dicts(self, id_type, alko_lvl=None, id_drink=None,):
         if not(alko_lvl):
             alko_lvl = self.get_alko_lvl()
         SQLtext = f"select * from dict " \
@@ -78,8 +83,8 @@ class FruhhhtBot():
                   f" and (id_drink is null {'or id_drink = ' + str(id_drink) if bool(id_drink) else '' });"
         return self._select_from_db(SQLtext)
 
-    def get_dict_rnd(self, id_type, id_drink=None):
-        return random_chose(self.get_dicts(id_type, id_drink))
+    def get_dict_rnd(self, id_type, alko_lvl=None, id_drink=None):
+        return random_chose(self.get_dicts(id_type, alko_lvl, id_drink))
 
     def check_chat_in_db(self):
         res = self._select_from_db(f"select * from chats where id_chat = {self.chat_id};")
@@ -136,7 +141,8 @@ class FruhhhtBot():
         # прокомментировать в чатик
         how = semantic.get_in_case(fav_measure_unit_name, {'accs', 'sing'})
         what = semantic.get_in_case(fav_drink_name, {'gent', 'sing'})
-        self.send_message2(f"{self.get_drink_text(fav_drink_id)} _выпил {how} {what}_")
+        self.send_message2(f"{self.get_drink_text(fav_drink_id)} _(выпил {how} {what})_")
+        self.alko_lvl = self.get_alko_lvl()
 
     def get_drink_text(self, id_drink):
         """
@@ -144,9 +150,7 @@ class FruhhhtBot():
         :param id_drink: id напитка из таблицы напитков (drinks)
         :return: текст комментрия после выпивки
         """
-        # Сделать таблицу ответов в БД
-        # Сделать выбора ответов
-        return "Ухх!!!"
+        return self.get_dict_rnd(4, None, id_drink)[2]
 
     def set_fav_drink(self, id_drink=None):
         """
@@ -183,7 +187,6 @@ class FruhhhtBot():
         how = semantic.get_in_case(self.fav_drink_name, {phrase_tuple[1]})
         phrase = str(phrase_tuple[2]).replace('%%drink_name%%', how)
         self.send_message(phrase)
-
 
     def get_alko_lvl(self, hours=BOT_DEFAULT_ALCO_HOURS):
         """
