@@ -1,8 +1,8 @@
-import telebot, secrets
+import telebot, my_secrets
 from Fruhhht_classes import FruhhhtBot
 
 
-bot = telebot.TeleBot(secrets.bot_token)
+bot = telebot.TeleBot(my_secrets.bot_token)
 bot_list = {}
 
 
@@ -55,6 +55,6 @@ def get_text_messages(message):
         pass
 
 
-print(f'{secrets.bot_name} запущен...')
+print(f'{my_secrets.bot_name} запущен...')
 bot.polling(none_stop=True, interval=0)
-print(f'{secrets.bot_name} завершен...')
+print(f'{my_secrets.bot_name} завершен...')

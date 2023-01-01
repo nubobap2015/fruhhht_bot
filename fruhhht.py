@@ -1,4 +1,4 @@
-import telebot, secrets, sqlite3, datetime, semantic
+import telebot, my_secrets, sqlite3, datetime, semantic
 
 # Constants
 USER_ALKO_TIME_IN_HOURS = 8

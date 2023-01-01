@@ -1,10 +1,19 @@
-import threading, secrets, sqlite3, telebot, json, semantic
+import threading, my_secrets, sqlite3, telebot, json, semantic, requests, json
 from random import choice as random_chose
+from random import randint
 
 DEBUG_MODE = True
 BOT_INTERVAL = 10  # in seconds
 BOT_DEFAULT_ALCO_HOURS = 12
-DB_NAME = secrets.db_name
+DB_NAME = my_secrets.db_name
+NN_IPADRESS = '0.0.0.0'
+NN_PORT = 5000
+NN_COMMANDS = [['GET', '/chatbot/about'],  # 0
+               ['GET', '/chatbot/questions'],  # 1
+               ['POST', '/chatbot/speech-to-text'],  # 2
+               ['POST', '/chatbot/text-to-speech'],  # 3
+               ['POST', '/chatbot/text-to-text'],  # 4
+               ]
 
 
 class FruhhhtBot():
@@ -24,6 +33,10 @@ class FruhhhtBot():
         self.fav_measure_unit_name = None
         self.fav_measure_unit_vol = None
         self.fav_measure_unit_vol2 = None
+        self.nn_session = None
+        # self.is_nn_auth = None
+        # Установка соединения с web-сервером с нейросетью
+        self.set_nn_session()
         # Установка напитка и тары
         self.set_fav_drink()
         # Приветствие в чат
@@ -53,7 +66,7 @@ class FruhhhtBot():
     def get_message(self, message):
         msg = message.text
         print(message)
-        if secrets.bot_name in msg:  # '@fruhhhtbot'
+        if my_secrets.bot_name in msg:  # '@fruhhhtbot'
             percent_start = msg.find('%%')
             if percent_start >= 0:
                 if len(msg[percent_start:]) == 2:
@@ -65,12 +78,9 @@ class FruhhhtBot():
                 # Переписать на функцию анализа текста
                 self.drink(message_id=message.message_id)
             else:
-                self.send_message(f"Заглушка на треп... сделать обработку ответов")
-
-                """self.send_message(f"Уровень алкоголя в крови: {self.get_alko_lvl()}")
-                self.drink()
-                self.drink(2, 3)
-                self.send_message(f"Уровень алкоголя в крови: {self.get_alko_lvl()}")"""
+                # self.send_message(f"Заглушка на треп... сделать обработку ответов")
+                print(msg)
+                self.send_message(''.join(semantic.get_ya_lemmas(msg)))
 
     def send_message(self, text_message):
         self.bot.send_message(self.chat_id, text_message)
@@ -79,16 +89,16 @@ class FruhhhtBot():
         self.bot.send_message(self.chat_id, text_message, parse_mode='Markdown')
 
     def get_dicts(self, id_type, alko_lvl=None, id_drink=None):
-        if not(alko_lvl):
+        if not (alko_lvl):
             alko_lvl = self.get_alko_lvl()
         SQLtext = f"select * from dict " \
                   f"where type={id_type} and alko_lvl_min<={alko_lvl} and alko_lvl_max>{alko_lvl}" \
-                  f" and (id_drink is null {'or id_drink = ' + str(id_drink) if bool(id_drink) else '' });"
+                  f" and (id_drink is null {'or id_drink = ' + str(id_drink) if bool(id_drink) else ''});"
         return self._select_from_db(SQLtext)
 
     def get_dict_rnd(self, id_type, alko_lvl=None, id_drink=None):
         a = self.get_dicts(id_type, alko_lvl, id_drink)
-        return random_chose(a) if len(a)>0 else [None, None, '']
+        return random_chose(a) if len(a) > 0 else [None, None, '']
 
     def get_text_from_dict(self, id_type, alko_lvl=None, id_drink=None):
         return self.get_dict_rnd(id_type, alko_lvl, id_drink)[2]
@@ -180,7 +190,7 @@ class FruhhhtBot():
         self.fav_measure_unit_name = res[4][1]
         self.fav_measure_unit_vol = res[4][2]
         self.fav_measure_unit_vol2 = res[4][3]
-        #Запись в БД о смене напитска
+        # Запись в БД о смене напитска
         self._insert_into_db(f"insert into actions_log (id_user, id_chat, id_action, text , alko_diff, id_parent_action"
                              f", to_user, toxic_diff) "
                              f"VALUES (1, {self.chat_id}, 2, '{str(json.dumps(res))}', 0, NULL, 1, 0)")
@@ -214,7 +224,16 @@ class FruhhhtBot():
         """ Активность чат бота"""
         self.check_chat_in_db()
         self.alko_lvl = self.get_alko_lvl()
-        self.bot.send_message(self.chat_id, f"Активность")
+        aaa = randint(0, 100)
+        self.bot.send_message(self.chat_id, f"Активность {self.nn_session}")
+        self.bot.send_message(self.chat_id, f"Активность2 {self._get_nn_request_type_and_url(4)}")
+        # my_data = json.dumps({'text': 'Привет'}, ensure_ascii=True)
+        # print(my_data)
+        print(self._get_nn_request(self._get_nn_request_type_and_url(4), {'text': 'Привет'}))
+        # self.bot.send_message(self.chat_id, f"Активность3 {self._get_nn_request()}")
+
+        if aaa < 6:
+            self.drink()
         self.bot_timer = threading.Timer(BOT_INTERVAL, self._bot_activity)
         self.bot_timer.start()
 
@@ -232,6 +251,40 @@ class FruhhhtBot():
     def _update_db(sql_text):
         with SQL() as sql:
             return sql.update(sql_text)
+
+    def set_nn_session(self):
+        self.nn_session = requests.Session()
+        # a = self.nn_session.request()
+        # a.text
+        self.nn_session.auth = (my_secrets.NN_LOGIN, my_secrets.NN_PASSWORD)
+        try:
+            nn_answer = self.nn_session.get(f'http://{NN_IPADRESS}:{NN_PORT}{NN_COMMANDS[0][1]}')
+            if DEBUG_MODE:
+                self.send_message2(f'[DEBUG] Нейросеть общения доступна... __{nn_answer}__')
+        except Exception as e:
+            if DEBUG_MODE:
+                self.send_message2(f'[DEBUG] Нейросеть недоступна: {e}')
+
+    def _get_nn_request_type_and_url(self, something=0):
+        cb_init_adr = f'http://{NN_IPADRESS}:{NN_PORT}'
+        if type(something) == int:
+            return [NN_COMMANDS[something][0], f'{cb_init_adr}{NN_COMMANDS[something][1]}']
+        if type(something) == list:
+            return [something[0], f'{cb_init_adr}{"/" if something[1][0] != "/" else ""}{something[1]}']
+        else:
+            raise TypeError(
+                f'Укажите, либо число от 0 до {len(NN_COMMANDS) - 1}, либо list["Тип запроса","Адрес запроса" ]')
+
+    def _get_nn_request(self, req, json={'text': ''}):
+        try:
+            answer = self.nn_session.request(method=req[0], url=req[1], json=json)
+            return answer.json()
+        except Exception as e:
+            if DEBUG_MODE:
+                self.send_message2(f'[DEBUG] Ошибка запроса: {e}')
+
+    def get_quest_from_nn(self):
+        pass
 
 
 class SQL:
