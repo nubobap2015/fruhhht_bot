@@ -65,28 +65,34 @@ class FruhhhtBot():
 
     def get_message(self, message):
         msg = message.text
+        replay_user = ''
         print(message)
-        if my_secrets.bot_name in msg:  # '@fruhhhtbot'
+        if message.reply_to_message:
+            replay_user = message.reply_to_message.from_user.username
+        if my_secrets.bot_name in msg or replay_user==my_secrets.bot_name.removeprefix('@'):  # '@fruhhhtbot'
             percent_start = msg.find('%%')
             if percent_start >= 0:
                 if len(msg[percent_start:]) == 2:
-                    self.send_message(f"Аттрибуты: {self.__dict__}")
+                    self.send_message(f"Атрибуты: {self.__dict__}")
                 else:
-                    self.send_message(f"Аттрибут {msg[percent_start + 2:]}: "
+                    self.send_message(f"Атрибут {msg[percent_start + 2:]}: "
                                       f"{getattr(self, msg[percent_start + 2:], 'не существует')}")
-            elif 'пей' in msg:
-                # Переписать на функцию анализа текста
-                self.drink(message_id=message.message_id)
             else:
-                # self.send_message(f"Заглушка на треп... сделать обработку ответов")
-                print(msg)
-                self.send_message(''.join(semantic.get_ya_lemmas(msg)))
+                clear_msg = msg.removeprefix('@fruhhhtbot ')
+                answer = self.get_answer_from_nn(clear_msg)
+                print(answer)
+                self.replay_message(answer, message.id)
+            if 'пей' in msg or 'выпей' in msg or 'бухн' in msg:
+                self.drink(message_id=message.message_id)
 
     def send_message(self, text_message):
         self.bot.send_message(self.chat_id, text_message)
 
     def send_message2(self, text_message):
         self.bot.send_message(self.chat_id, text_message, parse_mode='Markdown')
+
+    def replay_message(self, text_message, reply_to_message_id):
+        self.bot.send_message(self.chat_id, text_message, parse_mode='Markdown', reply_to_message_id=reply_to_message_id)
 
     def get_dicts(self, id_type, alko_lvl=None, id_drink=None):
         if not (alko_lvl):
@@ -225,11 +231,11 @@ class FruhhhtBot():
         self.check_chat_in_db()
         self.alko_lvl = self.get_alko_lvl()
         aaa = randint(0, 100)
-        self.bot.send_message(self.chat_id, f"Активность {self.nn_session}")
-        self.bot.send_message(self.chat_id, f"Активность2 {self._get_nn_request_type_and_url(4)}")
+        # self.bot.send_message(self.chat_id, f"Активность {self.nn_session}")
+        # self.bot.send_message(self.chat_id, f"Активность2 {self._get_nn_request_type_and_url(4)}")
         # my_data = json.dumps({'text': 'Привет'}, ensure_ascii=True)
         # print(my_data)
-        print(self._get_nn_request(self._get_nn_request_type_and_url(4), {'text': 'Привет'}))
+        # print(self._get_nn_request(self._get_nn_request_type_and_url(4), {'text': 'Привет'}))
         # self.bot.send_message(self.chat_id, f"Активность3 {self._get_nn_request()}")
 
         if aaa < 6:
@@ -283,8 +289,11 @@ class FruhhhtBot():
             if DEBUG_MODE:
                 self.send_message2(f'[DEBUG] Ошибка запроса: {e}')
 
-    def get_quest_from_nn(self):
-        pass
+    def get_answer_from_nn(self, input_text):
+        req_type = self._get_nn_request_type_and_url(4)
+        answer = self._get_nn_request(req_type, {"text": input_text})
+        print(answer)
+        return answer['text']
 
 
 class SQL:
